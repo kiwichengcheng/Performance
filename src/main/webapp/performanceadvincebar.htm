@@ -1,0 +1,360 @@
+<!DOCTYPE HTML>
+<html>
+    <head>
+        <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+        <title>Performance Chart</title>
+
+        <script type="text/javascript" src="jslib/jquery-easyui-1.2.5/jquery-1.7.1.min.js"></script>
+        <link rel="stylesheet" type="text/css" href="jslib/jquery-easyui-1.2.5/themes/default/easyui.css">
+        <link rel="stylesheet" type="text/css" href="jslib/jquery-easyui-1.2.5/themes/icon.css">
+        <link rel="stylesheet" type="text/css" href="jslib/jquery-easyui-1.2.5/demo/demo.css">
+        <script type="text/javascript" src="jslib/jquery-easyui-1.2.5/jquery.easyui.min.js"></script>
+        <script type="text/javascript">
+
+
+            $(function() {
+                $("input[name='basetype']:eq(0)").attr("checked", 'checked');
+                $("input[name='targettype']:eq(0)").attr("checked", 'checked');
+                $("input[name='basetype']").change(function() {
+                    if (this.value == 1) {
+                        $("#basetimesecond").show();
+                    } else
+                    {
+                        $("#basetimesecond").hide();
+                    }
+                });
+                $("input[name='targettype']").change(function() {
+                    if (this.value == 1) {
+                        $("#targettimescond").show();
+                    } else
+                    {
+                        $("#targettimescond").hide();
+                    }
+                });
+                $("#RT").combobox({
+                    onSelect: function(record) {
+                        $("#baseSch").combobox("disable");
+                        $("#targetSch").combobox("disable");
+                        $("#RT").combobox("disable");
+                        $.ajax({
+                            type: "GET",
+                            url: "/Performance/GetSchedule?account=" + record.id,
+                            dataType: "json",
+                            success: function(data) {
+                                var odata = $("#baseSch").combobox("getData");
+                                var tdata = $("#targetSch").combobox("getData");
+                                odata = odata.concat(data);
+                                tdata = tdata.concat(data);
+                                //odata.push({"account":"1","scheduleName":"hahaha"});
+                                $("#baseSch").combobox("loadData", odata);
+                                $("#baseSch").combobox("enable");
+                                $("#targetSch").combobox("loadData", tdata);
+                                $("#targetSch").combobox("enable");
+                                $("#RT").combobox("enable");
+                            }
+
+                        });
+                    },
+                    onUnselect: function(record) {
+                        $("#baseSch").combobox("disable");
+                        $("#targetSch").combobox("disable");
+                        $("#RT").combobox("disable");
+                        var odata = $("#baseSch").combobox("getData");
+                        var tdata = $("#targetSch").combobox("getData")
+
+                        odata = $.grep(odata, function(item, i) {
+                            return item.account != record.id;
+                        });
+                        tdata = $.grep(tdata, function(item, i) {
+                            return item.account != record.id;
+                        });
+                        $("#baseSch").combobox("loadData", odata);
+                        $("#baseSch").combobox("clear");
+                        $("#baseSch").combobox("enable");
+                        $("#targetSch").combobox("loadData", tdata);
+                        $("#targetSch").combobox("clear");
+                        $("#targetSch").combobox("enable");
+                        $("#RT").combobox("enable");
+
+                    },
+                    url: 'combobox_data.json',
+                    method: 'get',
+                    valueField: 'id',
+                    textField: 'text',
+                    multiple: true,
+                    editable: false,
+                    panelHeight: 'auto'
+                });
+                $("#baseSch").combobox({
+                    valueField: 'value',
+                    textField: 'scheduleName',
+                    groupField: 'account',
+                    groupFormatter: function(group) {
+                        return '<span style="color:red"><strong>' + group + '</strong></span>';
+                    },
+                    multiple: true
+                });
+                $("#targetSch").combobox({
+                    valueField: 'value',
+                    textField: 'scheduleName',
+                    groupField: 'account',
+                    groupFormatter: function(group) {
+                        return '<span style="color:red"><strong>' + group + '</strong></span>';
+                    },
+                    multiple: true
+                });
+                $("#download").click(function() {
+                    var rtarray = $("#RT").combobox("getValues");
+                    $("#formRT").val(rtarray);
+                    var scharray = new Array();
+                    var jsonstring = '['
+                    for (var rtindex in rtarray) {
+                        jsonstring += '{account:\'' + rtarray[rtindex] + '\',baseschedules:['
+                        scharray[rtindex] = new Array();
+                        $.each($("#baseSch").combobox("getValues"), function(index, value) {
+                            var tempvalue = value.split(",");
+                            if (tempvalue[0] == rtarray[rtindex]) {
+                                scharray[rtindex].push(tempvalue[1]);
+                                jsonstring += '\'' + tempvalue[1] + '\',';
+                            }
+                        });
+                        jsonstring += '],targetschedules:[';
+                        $.each($("#targetSch").combobox("getValues"), function(index, value) {
+                            var tempvalue = value.split(",");
+                            if (tempvalue[0] == rtarray[rtindex]) {
+                                //scharray[rtindex].push(tempvalue[1]);
+                                jsonstring += '\'' + tempvalue[1] + '\',';
+                            }
+                        });
+
+                        jsonstring += ']},';
+                    }
+                    jsonstring += ']';
+                    $("#formSch").val(jsonstring);
+                    $("#formbasetype").val($('input[name="basetype"]:checked').val());
+                    $("#formtargettype").val($('input[name="targettype"]:checked').val());
+                    $("#formbasefromdate").val($("#basedatetimefrom").datebox("getValue"));
+                    $("#formbasetodate").val($("#basedatetimeto").datebox("getValue"));
+                    $("#formtargetfromdate").val($("#targetdatetimefrom").datebox("getValue"));
+                    $("#formtargettodate").val($("#targetdatetimeto").datebox("getValue"));
+                    $("#formbaseenv").val($("#baseenv").val());
+                    $("#formtargetenv").val($("#targetenv").val());
+                    $("form").submit();
+
+                });
+                $("#query").click(function() {
+                    var rttext = $("#RT").combobox("getValues");
+                    //var querytypes=$("#querytype").val().split(",");
+                    //$.each()
+                    if (rttext.length > 0) {
+                        $("#body").html("");
+                        for (var rtname in rttext) {
+                            var baseschedules = new Array(0);
+                            $.each($("#baseSch").combobox("getValues"), function(index, value) {
+                                var tempvalue = value.split(",");
+                                if (tempvalue[0] == rttext[rtname]) {
+                                    baseschedules.push(tempvalue[1]);
+                                }
+                            });
+
+
+                            var targetschedules = new Array(0);
+                            $.each($("#targetSch").combobox("getValues"), function(index, value) {
+                                var tempvalue = value.split(",");
+                                if (tempvalue[0] == rttext[rtname]) {
+                                    targetschedules.push(tempvalue[1]);
+                                }
+                            });
+                            content = "<div id='container" + rttext[rtname] + "' style='min-width: 310px; height: 400px; margin: 0 auto'></div>"
+                            var table;
+                            if (rttext[rtname] == '9002480') {
+                                table = "<table id='table" + rttext[rtname] + "' style='min-width: 310px; margin: 0 auto; text-align:center' width='90%'><thead><th width='15%'>series</th><th>1W</th><th>1M</th><th>6M</th><th>1Y</th><th>5Y</th><th>10Y</th><th>20Y</th><th>1980</th></thead><tbody></tbody></table>"
+                            }
+                            else {
+                                table = "<table id='table" + rttext[rtname] + "' style='min-width: 310px; margin: 0 auto; text-align:center' width=90%'><thead><th width='15%'>series</th><th>50</th><th>100</th><th>500</th><th>1k</th><th>2k</th><th>5k</th><th>10k</th><th>25k</th><th>50k</th><th>75k</th></thead><tbody></tbody></table>"
+                            }
+                            $("#body").append(content);
+                            $("#body").append(table);
+
+                            var options = {
+                                chart: {
+                                    renderTo: 'container' + rttext[rtname],
+                                    type: 'column'
+                                },
+                                credits: false,
+                                title: {
+                                    text: rttext[rtname]
+                                },
+                                subtitle: {
+                                    text: ''
+                                },
+                                xAxis: {
+                                    categories: []
+                                },
+                                yAxis: {
+                                    min: 0,
+                                    title: {
+                                        text: 'Taking time'
+                                    }
+                                },
+                                tooltip: {
+                                    /*headerFormat: '<span style="font-size:10px">{point.key}</span><table>',
+                                     pointFormat: '<tr><td style="color:{series.color};padding:0">{series.name}: </td>' +
+                                     '<td style="padding:0"><b>{point.y:.2f} seconds</b></td></tr>',
+                                     footerFormat: '<tr><td></td></tr></table>',*/
+                                    formatter: function() {
+                                        var tooltip = '';
+                                        tooltip = '<span style="font-size:10px">' + this.x + '</span><table>';
+
+                                        $.each(this.points, function(i, point) {
+                                            tooltip += '<tr><td style="color:' + point.series.color + ';padding:0">' +
+                                                    point.series.name + ':</td><td style="padding:0"><b>' + point.y +
+                                                    'seconds</b></td></tr>';
+                                        });
+                                        if (this.points.length == 2) {
+                                            tooltip += '<tr><td>diff</td><td><b>' + Math.round((this.points[1].y - this.points[0].y) / this.points[0].y * 10000) / 100 + '%</b></td></tr></table>'
+                                        } else
+                                        {
+                                            tooltip += '</table>';
+                                        }
+                                        return tooltip;
+
+
+                                    },
+                                    shared: true,
+                                    useHTML: true
+                                },
+                                plotOptions: {
+                                    column: {
+                                        pointPadding: 0.2,
+                                        borderWidth: 0
+                                    }
+                                },
+                                series: [{
+                                        name: $("#baseenv").val() + ' ' + ($('input[name="basetype"]:checked').val() == 1 ? ('avg from ' + $("#basedatetimefrom").datebox("getValues") + ' to ' + $("#basedatetimeto").datebox("getValues")) : ('single date ' + $("#basedatetimefrom").datebox("getValues"))),
+                                        data: []
+
+                                    }, {
+                                        name: $("#targetenv").val() + ' ' + ($('input[name="targettype"]:checked').val() == 1 ? ('avg from ' + $("#targetdatetimefrom").datebox("getValues") + ' to ' + $("#targetdatetimeto").datebox("getValues")) : ('single date ' + $("#targetdatetimefrom").datebox("getValues"))),
+                                        data: []
+
+                                    }]
+                            }
+                            $.ajax({
+                                type: "POST",
+                                async: false,
+                                url: "/Performance/Test",
+                                data: {
+                                    type: $('input[name="basetype"]:checked').val(),
+                                    account: rttext[rtname],
+                                    fromdate: $("#basedatetimefrom").datebox("getValue"),
+                                    todate: $("#basedatetimeto").datebox("getValue"),
+                                    env: $("#baseenv").val(),
+                                    querysch: baseschedules
+                                },
+                                dataType: "json",
+                                success: function(data) {
+                                    options.series[0].data = data;
+                                    options.xAxis.categories = rttext[rtname] == '9002480' ? (['1W', '1M', '6M', '1Y', '5Y', '10Y', '20Y', '1980']) : (['50', '100', '500', '1k', '2k', '5k', '10k', '25k', '50k', '75k']);
+                                    var chart = new Highcharts.Chart(options);
+                                    var row = '<tr>';
+                                    row += '<td>' + $("#baseenv").val() + ' ' + ($('input[name="basetype"]:checked').val() == 1 ? ('avg from ' + $("#basedatetimefrom").datebox("getValues") + ' to ' + $("#basedatetimeto").datebox("getValues")) : ('single date ' + $("#basedatetimefrom").datebox("getValues"))) + '</td>';
+                                    $.each(data, function(j, e) {
+                                        row += '<td>' + e + '</td>';
+                                    });
+                                    row += '</tr>';
+                                    $('#table' + rttext[rtname] + ' tbody').append(row);
+
+                                }
+
+                            });
+                            $.ajax({
+                                type: "POST",
+                                async: false,
+                                url: "/Performance/Test",
+                                data: {
+                                    type: $('input[name="targettype"]:checked').val(),
+                                    account: rttext[rtname],
+                                    fromdate: $("#targetdatetimefrom").datebox("getValue"),
+                                    todate: $("#targetdatetimeto").datebox("getValue"),
+                                    env: $("#targetenv").val(),
+                                    querysch: targetschedules
+                                },
+                                dataType: "json",
+                                success: function(data) {
+                                    options.series[1].data = data;
+                                    options.xAxis.categories = rttext[rtname] == '9002480' ? (['1W', '1M', '6M', '1Y', '5Y', '10Y', '20Y', '1980']) : (['50', '100', '500', '1k', '2k', '5k', '10k', '25k', '50k', '75k']);
+                                    var chart = new Highcharts.Chart(options);
+                                    var row = '<tr>';
+                                    row += '<td>' + $("#targetenv").val() + ' ' + ($('input[name="targettype"]:checked').val() == 1 ? ('avg from ' + $("#targetdatetimefrom").datebox("getValues") + ' to ' + $("#targetdatetimeto").datebox("getValues")) : ('single date ' + $("#targetdatetimefrom").datebox("getValues"))) + '</td>';
+                                    $.each(data, function(j, e) {
+                                        row += '<td>' + e + '</td>';
+                                    });
+                                    row += '</tr>';
+                                    $('#table' + rttext[rtname] + ' tbody').append(row);
+                                }
+
+                            });
+
+
+                        }
+                    }
+
+                });
+
+            });
+
+
+        </script>
+    </head>
+    <body>
+        <script src="jslib/Highcharts-3.0.9/js/highcharts.js"></script>
+        <script src="jslib/Highcharts-3.0.9/js/modules/exporting.js"></script>
+        <span><a href="performance.htm">barchart</a>&nbsp;<a href="performanceline.htm">linechart(single schedule)</a>&nbsp;<a href="performancelinediffsch.htm">linechart(two schedules)</a>&nbsp;<a href="performanceadvincebar.htm">bar(two schedules)</a></span>
+        <p>Multiple ComboBox: </p>
+        <input id="RT" name="RT"
+               style="width:500px;"
+               >
+        <br>
+        base:<input type="radio" name="basetype" value="1" >avg</input><input type="radio" name="basetype" value="2">single date</input> 
+        <span><input class="easyui-datebox" id="basedatetimefrom" name="datetime" required="required" style="width:150px"/></span>
+        <span id="basetimesecond"><input class="easyui-datebox" id="basedatetimeto" name="datetime" required="required" style="width:150px"/></span>
+        <select id="baseenv" name="baseenv">
+            <option value="PPE" selected="selected">PPE</option>
+            <option value="DR">DR</option>
+        </select>
+        <input id="baseSch" name="Sch"
+               style="width:500px;"
+               ><br>
+        target:<input type="radio" name="targettype" value="1" >avg</input><input type="radio" name="targettype" value="2">single date</input>
+        <span><input class="easyui-datebox" id="targetdatetimefrom" name="datetime" required="required" style="width:150px"/></span>
+        <span id="targettimescond"><input class="easyui-datebox" id="targetdatetimeto" name="datetime" required="required" style="width:150px"/></span>
+
+        <select id="targetenv" name="targetenv">
+            <option value="PPE" selected="selected">PPE</option>
+            <option value="DR">DR</option>
+        </select>
+        <input id="targetSch" name="Sch"
+               style="width:500px;"
+               ><br>
+        <input type="button" id="query" value="query" /><br>
+
+        <input type="button" id="download" value="download"/>
+        <form action="Exportfile">
+            <input type="hidden" name="RT" id="formRT"/>
+            <input type="hidden" name="Sch" id="formSch"/>
+            <input type="hidden" name="basetype" id="formbasetype"/>
+            <input type="hidden" name="targettype" id="formtargettype"/>
+            <input type="hidden" name="basefromdate" id="formbasefromdate"/>
+            <input type="hidden" name="basetodate" id="formbasetodate"/>
+            <input type="hidden" name="baseenv" id="formbaseenv"/>
+            <input type="hidden" name="targetfromdate" id="formtargetfromdate"/>
+            <input type="hidden" name="targettodate" id="formtargettodate"/>
+            <input type="hidden" name="targetenv" id="formtargetenv"/>
+
+        </form>
+        <div id="body">
+
+        </div>
+    </body>
+</html>

@@ -1,0 +1,419 @@
+<!DOCTYPE HTML>
+<html>
+    <head>
+        <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+        <title>Time Series</title>
+        <script type="text/javascript" src="jslib/jquery-easyui-1.2.5/jquery-1.7.1.min.js"></script>
+        <link rel="stylesheet" type="text/css" href="jslib/jquery-easyui-1.2.5/themes/default/easyui.css">
+        <link rel="stylesheet" type="text/css" href="jslib/jquery-easyui-1.2.5/themes/icon.css">
+        <link rel="stylesheet" type="text/css" href="jslib/jquery-easyui-1.2.5/demo/demo.css">
+        <script type="text/javascript" src="jslib/jquery-easyui-1.2.5/jquery.easyui.min.js"></script>
+        <script type="text/javascript">
+            $(function() {
+                $("input[name='perfield']:eq(0)").attr("checked", 'checked');
+                $("#add").click(function() {
+                    var table = $("#comparetb");
+                    var row = "<tr><td>" + $("#baseSch").combobox("getValue") + "," + $("#baseenv").val() + "</td><td>" + $("#targetSch").combobox("getValue") + "," + $("#targetenv").val() + "</td><td><a href='#' onclick='javascript:$(this).parent(\"td\").parent(\"tr\").remove();'>remove</a></td></tr>";
+                    table.append(row);
+                });
+                $("#baseRT").combobox({
+                    onSelect: function(record) {
+                        $("#baseSch").combobox("disable");
+                        $("#baseRT").combobox("disable");
+                        $.ajax({
+                            type: "GET",
+                            url: "/Performance/GetSchedule?account=" + record.id,
+                            dataType: "json",
+                            success: function(data) {
+                                var odata = $("#baseSch").combobox("getData");
+                                odata = odata.concat(data);
+                                //odata.push({"account":"1","scheduleName":"hahaha"});
+                                $("#baseSch").combobox("loadData", odata);
+                                $("#baseSch").combobox("enable");
+                                $("#baseRT").combobox("enable");
+                            }
+
+                        });
+                    },
+                    onUnselect: function(record) {
+                        $("#baseSch").combobox("disable");
+                        $("#baseRT").combobox("disable");
+                        var odata = $("#baseSch").combobox("getData");
+
+                        odata = $.grep(odata, function(item, i) {
+                            return item.account != record.id;
+                        });
+
+                        $("#baseSch").combobox("loadData", odata);
+                        $("#baseSch").combobox("clear");
+                        $("#baseSch").combobox("enable");
+                        $("#baseRT").combobox("enable");
+
+                    },
+                    url: 'combobox_data.json',
+                    method: 'get',
+                    valueField: 'id',
+                    textField: 'text',
+                    editable: false,
+                    multiple: true,
+                    panelHeight: 'auto'
+                });
+                $("#baseSch").combobox({
+                    valueField: 'value',
+                    textField: 'scheduleName',
+                    groupField: 'account',
+                    groupFormatter: function(group) {
+                        return '<span style="color:red"><strong>' + group + '</strong></span>';
+                    },
+                    multiple: false
+                });
+
+
+                $("#targetRT").combobox({
+                    onSelect: function(record) {
+                        $("#targetSch").combobox("disable");
+                        $("#targetRT").combobox("disable");
+                        $.ajax({
+                            type: "GET",
+                            url: "/Performance/GetSchedule?account=" + record.id,
+                            dataType: "json",
+                            success: function(data) {
+                                var odata = $("#targetSch").combobox("getData");
+                                odata = odata.concat(data);
+                                //odata.push({"account":"1","scheduleName":"hahaha"});
+                                $("#targetSch").combobox("loadData", odata);
+                                $("#targetSch").combobox("enable");
+                                $("#targetRT").combobox("enable");
+                            }
+
+                        });
+                    },
+                    onUnselect: function(record) {
+                        $("#targetSch").combobox("disable");
+                        $("#targetRT").combobox("disable");
+                        var odata = $("#targetSch").combobox("getData");
+
+                        odata = $.grep(odata, function(item, i) {
+                            return item.account != record.id;
+                        });
+
+                        $("#targetSch").combobox("loadData", odata);
+                        $("#targetSch").combobox("clear");
+                        $("#targetSch").combobox("enable");
+                        $("#targetRT").combobox("enable");
+
+                    },
+                    url: 'combobox_data.json',
+                    method: 'get',
+                    valueField: 'id',
+                    textField: 'text',
+                    editable: false,
+                    multiple: true,
+                    panelHeight: 'auto'
+                });
+                $("#targetSch").combobox({
+                    valueField: 'value',
+                    textField: 'scheduleName',
+                    groupField: 'account',
+                    groupFormatter: function(group) {
+                        return '<span style="color:red"><strong>' + group + '</strong></span>';
+                    },
+                    multiple: false
+                });
+                $("#submit").click(function() {
+                         
+                    var jsonstring = '[';
+                    
+                    $("#comparetb").find("tr").each(function() {
+                        
+                        var row = new Array();
+                        $(this).find("td").each(function() {
+                            row.push($(this).html());
+                        });
+                        var basetemp = row[0].split(",");
+                        var targettemp = row[1].split(",");
+                        jsonstring += '{baseaccount:\''+basetemp[0]+'\',baseschedule:\''+basetemp[1]+'\',baseenv:\''+basetemp[2]+'\',targetaccount:\''+targettemp[0]+'\',targetschedule:\''+targettemp[1]+'\',targetenv:\''+targettemp[2]+'\'},'
+                    });
+                    jsonstring += ']';
+                    
+                    $("#formSch").val(jsonstring);
+                    $("#formbasefromdate").val($("#datetimefrom").datebox("getValue"));
+                    $("#formbasetodate").val($("#datetimeto").datebox("getValue"));
+                    $("#formperfield").val($('input[name="perfield"]:checked').val());
+                    
+                    $("form").submit();
+                });
+                $("#query").click(function() {
+
+                    $("#body").html("");
+                    var count = 0;
+                    var linetype = $('input[name="perfield"]:checked').val();
+                    $("#comparetb").find("tr").each(function() {
+                        content = "<div id='container" + count + "' style='min-width: 310px; height: 400px; margin: 0 auto'></div>"
+                        $("#body").append(content);
+                        var row = new Array();
+                        $(this).find("td").each(function() {
+                            row.push($(this).html());
+                        });
+                        var options = {
+                            chart: {
+                                type: 'spline',
+                                zoomType: 'x',
+                                renderTo: 'container' + count
+                            },
+                            credits: false,
+                            title: {
+                                text: 'Compare line'
+                            },
+                            subtitle: {
+                                text: row[0].split(",")[0] + ":" + row[0].split(",")[1] + " vs " + row[1].split(",")[0] + ":" + row[1].split(",")[1]
+                            },
+                            xAxis: {
+                                type: 'datetime',
+                                dateTimeLabelFormats: {// don't display the dummy year
+                                    day: '%Y %b %d'
+                                },
+                                maxZoom: 14 * 24 * 3600000 // fourteen days
+                            },
+                            yAxis: {
+                                title: {
+                                    text: 'Taking time (s)'
+                                },
+                                min: 0/*,
+                                 plotLines: [{
+                                 color: 'red',
+                                 width: 2,
+                                 value: 1500,
+                                 dashStyle: 'longdashdot',
+                                 label:{
+                                 text:'haha'
+                                 }
+                                 }]*/
+                            },
+                            tooltip: {
+                                formatter: function() {
+                                    return '<b>' + this.series.name + '</b><br/>' +
+                                            Highcharts.dateFormat('%Y-%b-%d', this.x) + ': ' + this.y + ' s' +
+                                            '<br/> fields:' + this.point.fields +
+                                            '<br/> ILcount: ' + this.point.ILcount;
+                                }
+                            },
+                            series: []
+                        }
+                        $.ajax({//base
+
+                            type: "POST",
+                            async: false,
+                            url: "/Performance/TimeSerise",
+                            data: {
+                                type: 'env',
+                                account: row[0].split(",")[0],
+                                fromdate: $("#datetimefrom").datebox("getValue"),
+                                todate: $("#datetimeto").datebox("getValue"),
+                                env: row[0].split(",")[2],
+                                querysch: row[0].split(",")[1]
+                            },
+                            datatype: "json",
+                            success: function(data) {
+                                var result = eval(data);
+                                var series = {data: [], name: $("#baseenv").val() + ":" + row[0].split(",")[0] + ":" + row[0].split(",")[1], color: 'red'};
+                                $.each(result, function(key, value) {
+                                    //$.each(value, function(key, val) {
+
+                                               // if (key == 'taketime') {
+                                                    var d = value.taketime.split(",");
+                                                    var x = Date.UTC(d[0], d[1] - 1, d[2]);
+                                                    var mydate;
+                                                    if (linetype == 'o') {
+                                                        mydate = "{'x':" + x + ",'y':" + parseFloat(d[3]) + ",'fields':" + parseFloat(d[5]) + ",'ILcount':" + parseFloat(d[4]);
+                                                        if(value.omax == 0 && value.omin == 0)
+                                                            mydate+= "}";
+                                                        else if(value.omax == 1)
+                                                            mydate +=",marker:{symbol: 'url(jslib/jquery-easyui-1.2.5/themes/default/images/panel_tool_collapse.gif)'}}";
+                                                        else
+                                                             mydate +=",marker:{symbol: 'url(jslib/jquery-easyui-1.2.5/themes/default/images/panel_tool_expand.gif)'}}";
+                                                        series.data.push(eval("(" + mydate + ")"));
+                                                        //series.data.push([x,parseFloat(d[3]),parseFloat(d[4]),parseFloat(d[5])]);
+                                                    }
+                                                    if (linetype == 'i') {
+                                                        mydate = "{'x':" + x + ",'y':" + parseFloat(d[3]) / parseFloat(d[4]) + ",'fields':" + parseFloat(d[5]) + ",'ILcount':" + parseFloat(d[4]);
+                                                        if(value.imax == 0 && value.imin == 0)
+                                                            mydate+= "}";
+                                                        else if(value.imax == 1)
+                                                            mydate +=",marker:{symbol: 'url(jslib/jquery-easyui-1.2.5/themes/default/images/panel_tool_collapse.gif)'}}";
+                                                        else
+                                                             mydate +=",marker:{symbol: 'url(jslib/jquery-easyui-1.2.5/themes/default/images/panel_tool_expand.gif)'}}";
+                                                        series.data.push(eval("(" + mydate + ")"));
+                                                        //series.data.push([x,parseFloat(d[3])/parseFloat(d[4]),parseFloat(d[4]),parseFloat(d[5])]);
+                                                    }
+                                                    if (linetype == 'f') {
+                                                        mydate = "{'x':" + x + ",'y':" + parseFloat(d[3]) / parseFloat(d[5]) + ",'fields':" + parseFloat(d[5]) + ",'ILcount':" + parseFloat(d[4]);
+                                                        if(value.fmax == 0 && value.fmin == 0)
+                                                            mydate+= "}";
+                                                        else if(value.fmax == 1)
+                                                            mydate +=",marker:{symbol: 'url(jslib/jquery-easyui-1.2.5/themes/default/images/panel_tool_collapse.gif)'}}";
+                                                        else
+                                                             mydate +=",marker:{symbol: 'url(jslib/jquery-easyui-1.2.5/themes/default/images/panel_tool_expand.gif)'}}";
+                                                        
+                                                        series.data.push(eval("(" + mydate + ")"));
+                                                        series.data.push([x, parseFloat(d[3]) / parseFloat(d[5]), parseFloat(d[4]), parseFloat(d[5])]);
+                                                    }
+                                                    //series.data.push(fields,parseFloat(d[5]));
+                                                    //series.data.push(ILcount,parseFloat(d[4]))
+                                                //}
+
+
+                                            //});
+                                });
+                                options.series.push(series);
+                                var chart = new Highcharts.Chart(options);
+                            },
+                            error: function(jqXHR, textStatus, errorThrown) {
+                                alert(jqXHR + ":::::" + textStatus + ":::::" + errorThrown);
+
+                            }
+
+                        });
+
+                        $.ajax({//base
+
+                            type: "POST",
+                            async: false,
+                            url: "/Performance/TimeSerise",
+                            data: {
+                                type: 'env',
+                                account: row[1].split(",")[0],
+                                fromdate: $("#datetimefrom").datebox("getValue"),
+                                todate: $("#datetimeto").datebox("getValue"),
+                                env: row[1].split(",")[2],
+                                querysch: row[1].split(",")[1]
+                            },
+                            datatype: "json",
+                            success: function(data) {
+                                var result = eval(data);
+                                var series = {data: [], name: $("#targetenv").val() + ":" + row[1].split(",")[0] + ":" + row[1].split(",")[1], color: 'blue'};
+                                $.each(result, function(key, value) {
+                                   //$.each(value, function(key, val) {
+
+                                               // if (key == 'taketime') {
+                                                    var d = value.taketime.split(",");
+                                                    var x = Date.UTC(d[0], d[1] - 1, d[2]);
+                                                    var mydate;
+                                                    if (linetype == 'o') {
+                                                        mydate = "{'x':" + x + ",'y':" + parseFloat(d[3]) + ",'fields':" + parseFloat(d[5]) + ",'ILcount':" + parseFloat(d[4]);
+                                                        if(value.omax == 0 && value.omin == 0)
+                                                            mydate+= "}";
+                                                        else if(value.omax == 1)
+                                                            mydate +=",marker:{symbol: 'url(jslib/jquery-easyui-1.2.5/themes/default/images/panel_tool_collapse.gif)'}}";
+                                                        else
+                                                             mydate +=",marker:{symbol: 'url(jslib/jquery-easyui-1.2.5/themes/default/images/panel_tool_expand.gif)'}}";
+                                                        series.data.push(eval("(" + mydate + ")"));
+                                                        //series.data.push([x,parseFloat(d[3]),parseFloat(d[4]),parseFloat(d[5])]);
+                                                    }
+                                                    if (linetype == 'i') {
+                                                        mydate = "{'x':" + x + ",'y':" + parseFloat(d[3]) / parseFloat(d[4]) + ",'fields':" + parseFloat(d[5]) + ",'ILcount':" + parseFloat(d[4]);
+                                                        if(value.imax == 0 && value.imin == 0)
+                                                            mydate+= "}";
+                                                        else if(value.imax == 1)
+                                                            mydate +=",marker:{symbol: 'url(jslib/jquery-easyui-1.2.5/themes/default/images/panel_tool_collapse.gif)'}}";
+                                                        else
+                                                             mydate +=",marker:{symbol: 'url(jslib/jquery-easyui-1.2.5/themes/default/images/panel_tool_expand.gif)'}}";
+                                                        series.data.push(eval("(" + mydate + ")"));
+                                                        //series.data.push([x,parseFloat(d[3])/parseFloat(d[4]),parseFloat(d[4]),parseFloat(d[5])]);
+                                                    }
+                                                    if (linetype == 'f') {
+                                                        mydate = "{'x':" + x + ",'y':" + parseFloat(d[3]) / parseFloat(d[5]) + ",'fields':" + parseFloat(d[5]) + ",'ILcount':" + parseFloat(d[4]);
+                                                        if(value.fmax == 0 && value.fmin == 0)
+                                                            mydate+= "}";
+                                                        else if(value.fmax == 1)
+                                                            mydate +=",marker:{symbol: 'url(jslib/jquery-easyui-1.2.5/themes/default/images/panel_tool_collapse.gif)'}}";
+                                                        else
+                                                             mydate +=",marker:{symbol: 'url(jslib/jquery-easyui-1.2.5/themes/default/images/panel_tool_expand.gif)'}}";
+                                                        
+                                                        series.data.push(eval("(" + mydate + ")"));
+                                                        series.data.push([x, parseFloat(d[3]) / parseFloat(d[5]), parseFloat(d[4]), parseFloat(d[5])]);
+                                                    }
+                                                    //series.data.push(fields,parseFloat(d[5]));
+                                                    //series.data.push(ILcount,parseFloat(d[4]))
+                                                //}
+
+
+                                            //});
+                                });
+                                options.series.push(series);
+                                var chart = new Highcharts.Chart(options);
+                            },
+                            error: function(jqXHR, textStatus, errorThrown) {
+                                alert(jqXHR + ":::::" + textStatus + ":::::" + errorThrown);
+
+                            }
+
+                        });
+
+
+                        count++;
+                    });
+
+                });
+            });
+
+
+        </script>
+    </head>
+    <body>
+        <script src="jslib/Highcharts-3.0.9/js/highcharts.js"></script>
+        <script src="jslib/Highcharts-3.0.9/js/modules/exporting.js"></script>
+
+
+        <span><a href="performance.htm">barchart</a>&nbsp;<a href="performanceline.htm">linechart(single schedule)</a>&nbsp;<a href="performancelinediffsch.htm">linechart(two schedules)</a>&nbsp;<a href="performanceadvincebar.htm">bar(two schedules)</a></span><br>
+        <span>from :<input class="easyui-datebox" id="datetimefrom" name="datetime" required="required" style="width:150px"/></span>
+        <span> to :<input class="easyui-datebox" id="datetimeto" name="datetime" required="required" style="width:150px"/></span>
+        <br>
+        <p>Multiple ComboBox: </p>
+        base:<input id="baseRT" 
+                    style="width:500px;"
+                    >
+        <input id="baseSch" 
+               style="width:500px;"
+               ><select name="baseenv" id="baseenv">
+            <option value="PPE">PPE</option>
+            <option value="DR">DR</option>
+        </select><br>
+
+        target: 
+        <input id="targetRT" 
+               style="width:500px;"
+               >
+        <input id="targetSch" 
+               style="width:500px;"
+               ><select name="targetenv" id="targetenv">
+            <option value="PPE">PPE</option>
+            <option value="DR">DR</option>
+        </select><br>
+
+        <input type="button" id="add" value="add"/>
+        <table id="comparetb" border="1">
+
+        </table>
+        <input type="radio" id="perfield" name="perfield" value="o">original chart</input><input type="radio" id="perfield" name="perfield" value="f">only per-field</input><input type="radio" id="perfield" name="perfield" value="i">only per-instrument</input><br>
+
+        <input type="button" id="query" value="query" ><br>
+        <input type="button" id ="submit" value="download">
+        <form action="ExportfileTimeseriessingle">
+            <input type="hidden" name="RT" id="formRT"/>
+            <input type="hidden" name="Sch" id="formSch"/>
+            <input type="hidden" name="basetype" id="formbasetype" value="env"/>
+            <input type="hidden" name="targettype" id="formtargettype" value="env"/>
+            <input type="hidden" name="basefromdate" id="formbasefromdate"/>
+            <input type="hidden" name="basetodate" id="formbasetodate"/>
+            <input type="hidden" name="baseenv" id="formbaseenv"/>
+            <input type="hidden" name="avgfromdate" id="formavgfromdate"/>
+            <input type="hidden" name="avgtodate" id="formavgtodate"/>
+            <input type="hidden" name="targetenv" id="formtargetenv"/>
+            <input type="hidden" name="fperfield" id="formperfield"/>
+        </form>
+        <div id="body">
+
+        </div>
+    </body>
+</html>
